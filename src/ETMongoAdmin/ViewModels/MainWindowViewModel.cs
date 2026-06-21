@@ -21,9 +21,10 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         Connections.CollectionChanged += OnConnectionsChanged;
 
         AddConnectionCommand = new RelayCommand(AddConnection);
-        EditConnectionCommand = new RelayCommand(EditConnection, () => SelectedConnection is not null);
-        DeleteConnectionCommand = new RelayCommand(DeleteConnection, () => SelectedConnection is not null);
-        OpenWorkspaceCommand = new RelayCommand(OpenWorkspace, () => SelectedConnection is not null);
+        EditConnectionCommand = new RelayCommand(EditConnection, CanUseConnection);
+        DeleteConnectionCommand = new RelayCommand(DeleteConnection, CanUseConnection);
+        CopyConnectionCommand = new RelayCommand(CopyConnection, CanUseConnection);
+        OpenWorkspaceCommand = new RelayCommand(OpenWorkspace, CanUseConnection);
         DisconnectCommand = new RelayCommand(Disconnect, () => IsWorkspaceOpen);
         SaveConnectionCommand = new RelayCommand(SaveConnection);
         CancelEditCommand = new RelayCommand(CancelEdit);
@@ -91,7 +92,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         {
             if (ActiveConnection is not null)
             {
-                return string.Concat("当前工作区：", ActiveConnection.Name, " (", ActiveConnection.Endpoint, ")");
+                return string.Concat("当前工作区：", ActiveConnection.Name, "（", ActiveConnection.Endpoint, "）");
             }
 
             return SelectedConnection is null
@@ -103,10 +104,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public ICommand AddConnectionCommand { get; }
     public ICommand EditConnectionCommand { get; }
     public ICommand DeleteConnectionCommand { get; }
+    public ICommand CopyConnectionCommand { get; }
     public ICommand OpenWorkspaceCommand { get; }
     public ICommand DisconnectCommand { get; }
     public ICommand SaveConnectionCommand { get; }
     public ICommand CancelEditCommand { get; }
+
+    public Func<MongoConnectionProfile, bool>? ConfirmDeleteConnection { get; set; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -118,38 +122,46 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             Name = "本地 Mongo",
             Host = "localhost",
             Port = "27017",
-            Database = "ETGame"
+            Database = "ETGame",
+            SshPort = "22"
         };
         EditorError = string.Empty;
         IsEditorOpen = true;
         OnPropertyChanged(nameof(EditorTitle));
     }
 
-    private void EditConnection()
+    private void EditConnection(object? parameter)
     {
-        if (SelectedConnection is null)
+        var connection = ResolveConnection(parameter);
+        if (connection is null)
         {
             return;
         }
 
+        SelectedConnection = connection;
         _isEditingExisting = true;
-        EditingConnection = SelectedConnection.Clone();
+        EditingConnection = connection.Clone();
         EditorError = string.Empty;
         IsEditorOpen = true;
         OnPropertyChanged(nameof(EditorTitle));
     }
 
-    private void DeleteConnection()
+    private void DeleteConnection(object? parameter)
     {
-        if (SelectedConnection is null)
+        var connection = ResolveConnection(parameter);
+        if (connection is null)
         {
             return;
         }
 
-        var deleting = SelectedConnection;
-        Connections.Remove(deleting);
+        if (ConfirmDeleteConnection?.Invoke(connection) == false)
+        {
+            return;
+        }
 
-        if (ActiveConnection?.Id == deleting.Id)
+        Connections.Remove(connection);
+
+        if (ActiveConnection?.Id == connection.Id)
         {
             ActiveConnection = null;
         }
@@ -157,14 +169,30 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         SelectedConnection = Connections.FirstOrDefault();
     }
 
-    private void OpenWorkspace()
+    private void CopyConnection(object? parameter)
     {
-        if (SelectedConnection is null)
+        var connection = ResolveConnection(parameter);
+        if (connection is null)
         {
             return;
         }
 
-        ActiveConnection = SelectedConnection;
+        var copy = connection.CloneAsCopy();
+        var sourceIndex = Connections.IndexOf(connection);
+        Connections.Insert(sourceIndex < 0 ? Connections.Count : sourceIndex + 1, copy);
+        SelectedConnection = copy;
+    }
+
+    private void OpenWorkspace(object? parameter)
+    {
+        var connection = ResolveConnection(parameter);
+        if (connection is null)
+        {
+            return;
+        }
+
+        SelectedConnection = connection;
+        ActiveConnection = connection;
     }
 
     private void Disconnect()
@@ -196,12 +224,23 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
         EditorError = string.Empty;
         IsEditorOpen = false;
+        OnPropertyChanged(nameof(WorkspaceTitle));
     }
 
     private void CancelEdit()
     {
         EditorError = string.Empty;
         IsEditorOpen = false;
+    }
+
+    private bool CanUseConnection(object? parameter)
+    {
+        return parameter is MongoConnectionProfile || SelectedConnection is not null;
+    }
+
+    private MongoConnectionProfile? ResolveConnection(object? parameter)
+    {
+        return parameter as MongoConnectionProfile ?? SelectedConnection;
     }
 
     private static string Validate(MongoConnectionProfile profile)
@@ -216,9 +255,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return "请输入 MongoDB Host。";
         }
 
-        if (!int.TryParse(profile.Port, out var port) || port <= 0 || port > 65535)
+        if (!IsValidPort(profile.Port))
         {
-            return "请输入有效的端口号（1-65535）。";
+            return "请输入有效的 MongoDB 端口号（1-65535）。";
         }
 
         if (string.IsNullOrWhiteSpace(profile.Database))
@@ -226,7 +265,32 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
             return "请输入默认数据库名称。";
         }
 
+        if (!profile.UseSshProxy)
+        {
+            return string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.SshHost))
+        {
+            return "启用 SSH 代理后，请输入 SSH Host。";
+        }
+
+        if (!IsValidPort(profile.SshPort))
+        {
+            return "请输入有效的 SSH 端口号（1-65535）。";
+        }
+
+        if (string.IsNullOrWhiteSpace(profile.SshUserName))
+        {
+            return "启用 SSH 代理后，请输入 SSH 用户名。";
+        }
+
         return string.Empty;
+    }
+
+    private static bool IsValidPort(string value)
+    {
+        return int.TryParse(value, out var port) && port > 0 && port <= 65535;
     }
 
     private void OnConnectionsChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -239,6 +303,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         (EditConnectionCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (DeleteConnectionCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (CopyConnectionCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (OpenWorkspaceCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (DisconnectCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }

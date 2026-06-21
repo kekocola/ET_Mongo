@@ -11,6 +11,12 @@ public sealed class MongoConnectionProfile : INotifyPropertyChanged
     private string _port = "27017";
     private string _database = string.Empty;
     private string _userName = string.Empty;
+    private bool _useSshProxy;
+    private string _sshHost = string.Empty;
+    private string _sshPort = "22";
+    private string _sshUserName = string.Empty;
+    private string _sshPassword = string.Empty;
+    private string _sshPrivateKeyPath = string.Empty;
 
     public string Id
     {
@@ -60,7 +66,81 @@ public sealed class MongoConnectionProfile : INotifyPropertyChanged
         set => SetField(ref _userName, value);
     }
 
+    public bool UseSshProxy
+    {
+        get => _useSshProxy;
+        set
+        {
+            if (SetField(ref _useSshProxy, value))
+            {
+                OnPropertyChanged(nameof(SshProxySummary));
+            }
+        }
+    }
+
+    public string SshHost
+    {
+        get => _sshHost;
+        set
+        {
+            if (SetField(ref _sshHost, value))
+            {
+                OnPropertyChanged(nameof(SshProxySummary));
+            }
+        }
+    }
+
+    public string SshPort
+    {
+        get => _sshPort;
+        set
+        {
+            if (SetField(ref _sshPort, value))
+            {
+                OnPropertyChanged(nameof(SshProxySummary));
+            }
+        }
+    }
+
+    public string SshUserName
+    {
+        get => _sshUserName;
+        set
+        {
+            if (SetField(ref _sshUserName, value))
+            {
+                OnPropertyChanged(nameof(SshProxySummary));
+            }
+        }
+    }
+
+    public string SshPassword
+    {
+        get => _sshPassword;
+        set => SetField(ref _sshPassword, value);
+    }
+
+    public string SshPrivateKeyPath
+    {
+        get => _sshPrivateKeyPath;
+        set => SetField(ref _sshPrivateKeyPath, value);
+    }
+
     public string Endpoint => string.Concat(Host, ":", Port);
+
+    public string SshProxySummary
+    {
+        get
+        {
+            if (!UseSshProxy)
+            {
+                return "未启用 SSH 代理";
+            }
+
+            var userPrefix = string.IsNullOrWhiteSpace(SshUserName) ? string.Empty : string.Concat(SshUserName, "@");
+            return string.Concat("SSH：", userPrefix, SshHost, ":", SshPort);
+        }
+    }
 
     public MongoConnectionProfile Clone()
     {
@@ -71,8 +151,22 @@ public sealed class MongoConnectionProfile : INotifyPropertyChanged
             Host = Host,
             Port = Port,
             Database = Database,
-            UserName = UserName
+            UserName = UserName,
+            UseSshProxy = UseSshProxy,
+            SshHost = SshHost,
+            SshPort = SshPort,
+            SshUserName = SshUserName,
+            SshPassword = SshPassword,
+            SshPrivateKeyPath = SshPrivateKeyPath
         };
+    }
+
+    public MongoConnectionProfile CloneAsCopy()
+    {
+        var copy = Clone();
+        copy.Id = Guid.NewGuid().ToString("N");
+        copy.Name = string.IsNullOrWhiteSpace(Name) ? "未命名连接 - 副本" : string.Concat(Name, " - 副本");
+        return copy;
     }
 
     public void CopyFrom(MongoConnectionProfile source)
@@ -82,6 +176,12 @@ public sealed class MongoConnectionProfile : INotifyPropertyChanged
         Port = source.Port;
         Database = source.Database;
         UserName = source.UserName;
+        UseSshProxy = source.UseSshProxy;
+        SshHost = source.SshHost;
+        SshPort = source.SshPort;
+        SshUserName = source.SshUserName;
+        SshPassword = source.SshPassword;
+        SshPrivateKeyPath = source.SshPrivateKeyPath;
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

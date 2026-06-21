@@ -47,7 +47,7 @@
 
         <Grid Grid.Row="1" Margin="18">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="330" />
+                <ColumnDefinition Width="350" />
                 <ColumnDefinition Width="18" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
@@ -61,74 +61,122 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <StackPanel>
-                        <TextBlock Text="MongoDB 连接"
-                                   FontSize="18"
-                                   FontWeight="SemiBold"
-                                   Foreground="#0F172A" />
-                        <TextBlock Text="管理 ET 服务器对应的 Mongo 连接配置。"
-                                   Foreground="#64748B"
-                                   Margin="0,6,0,14"
-                                   TextWrapping="Wrap" />
-                        <Border Background="#EFF6FF"
-                                BorderBrush="#BFDBFE"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="10"
-                                Visibility="{Binding HasNoConnections, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock Text="暂无连接。请先点击“新增连接”创建 MongoDB 连接配置。"
-                                       Foreground="#1D4ED8"
+                    <DockPanel LastChildFill="True">
+                        <Button DockPanel.Dock="Right"
+                                Content="新增连接"
+                                Command="{Binding AddConnectionCommand}"
+                                Style="{StaticResource PrimaryButton}"
+                                Margin="10,0,0,0" />
+                        <StackPanel>
+                            <TextBlock Text="MongoDB 连接"
+                                       FontSize="18"
+                                       FontWeight="SemiBold"
+                                       Foreground="#0F172A" />
+                            <TextBlock Text="左侧列表管理连接；双击连接直接进入工作区。"
+                                       Foreground="#64748B"
+                                       Margin="0,6,0,0"
                                        TextWrapping="Wrap" />
-                        </Border>
-                    </StackPanel>
+                        </StackPanel>
+                    </DockPanel>
 
-                    <ListBox Grid.Row="1"
+                    <Border Grid.Row="1"
+                            Background="#EFF6FF"
+                            BorderBrush="#BFDBFE"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="10"
+                            Margin="0,14,0,0"
+                            Visibility="{Binding HasNoConnections, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="暂无连接，请新增连接。"
+                                   Foreground="#1D4ED8"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <ListBox x:Name="ConnectionList"
+                             Grid.Row="2"
                              ItemsSource="{Binding Connections}"
                              SelectedItem="{Binding SelectedConnection}"
-                             Margin="0,16,0,16"
+                             Margin="0,16,0,0"
                              BorderBrush="#E2E8F0"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0,0,0,8" />
+                                <EventSetter Event="MouseDoubleClick" Handler="ConnectionItem_MouseDoubleClick" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Padding="10" Margin="2">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Name}"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="#0F172A" />
-                                        <TextBlock Text="{Binding Endpoint}"
-                                                   Foreground="#64748B"
-                                                   Margin="0,4,0,0" />
-                                        <TextBlock Text="{Binding Database}"
-                                                   Foreground="#94A3B8"
-                                                   FontSize="12"
-                                                   Margin="0,2,0,0" />
-                                    </StackPanel>
+                                <Border Padding="12"
+                                        Margin="2"
+                                        CornerRadius="10"
+                                        BorderBrush="#E2E8F0"
+                                        BorderThickness="1"
+                                        Background="#FFFFFF"
+                                        ToolTip="双击打开并进入工作区">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}"
+                                                       FontWeight="SemiBold"
+                                                       Foreground="#0F172A" />
+                                            <TextBlock Text="{Binding Endpoint}"
+                                                       Foreground="#64748B"
+                                                       Margin="0,5,0,0" />
+                                            <TextBlock Text="{Binding Database}"
+                                                       Foreground="#94A3B8"
+                                                       FontSize="12"
+                                                       Margin="0,2,0,0" />
+                                            <TextBlock Text="{Binding SshProxySummary}"
+                                                       Foreground="#64748B"
+                                                       FontSize="12"
+                                                       Margin="0,6,0,0" />
+                                        </StackPanel>
+
+                                        <Button Grid.Column="1"
+                                                Content="..."
+                                                Width="34"
+                                                Height="30"
+                                                Margin="10,0,0,0"
+                                                Padding="0"
+                                                VerticalAlignment="Top"
+                                                Background="#F8FAFC"
+                                                BorderBrush="#CBD5E1"
+                                                Click="ConnectionMenuButton_Click">
+                                            <Button.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="编辑"
+                                                              Command="{Binding PlacementTarget.Tag.EditConnectionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                    <MenuItem Header="复制连接"
+                                                              Command="{Binding PlacementTarget.Tag.CopyConnectionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                    <Separator />
+                                                    <MenuItem Header="删除"
+                                                              Command="{Binding PlacementTarget.Tag.DeleteConnectionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                </ContextMenu>
+                                            </Button.ContextMenu>
+                                            <Button.Tag>
+                                                <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=ListBox}" />
+                                            </Button.Tag>
+                                        </Button>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-
-                    <StackPanel Grid.Row="2">
-                        <WrapPanel Margin="0,0,0,10">
-                            <Button Content="新增连接"
-                                    Command="{Binding AddConnectionCommand}"
-                                    Style="{StaticResource PrimaryButton}" />
-                            <Button Content="编辑"
-                                    Command="{Binding EditConnectionCommand}"
-                                    Style="{StaticResource SecondaryButton}" />
-                            <Button Content="删除"
-                                    Command="{Binding DeleteConnectionCommand}"
-                                    Style="{StaticResource SecondaryButton}" />
-                        </WrapPanel>
-                        <Button Content="连接并打开工作区"
-                                Command="{Binding OpenWorkspaceCommand}"
-                                Style="{StaticResource PrimaryButton}"
-                                HorizontalAlignment="Stretch" />
-                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -148,7 +196,7 @@
                                        FontWeight="SemiBold"
                                        Foreground="#0F172A"
                                        TextAlignment="Center" />
-                            <TextBlock Text="连接配置完成后即可进入工作区。当前版本先完成 UI 框架与交互骨架，后续会接入真实 MongoDB 连接、玩家数据读写和性能监控。"
+                            <TextBlock Text="连接配置完成后，双击左侧连接即可进入工作区。当前版本先完成 UI 框架与交互骨架，后续会接入真实 MongoDB 连接、玩家数据读写和性能监控。"
                                        Foreground="#64748B"
                                        Margin="0,14,0,24"
                                        TextWrapping="Wrap"
@@ -257,7 +305,7 @@
                                         <TextBlock Text="连接管理"
                                                    FontSize="22"
                                                    FontWeight="SemiBold" />
-                                        <TextBlock Text="可在这里维护 MongoDB 连接配置。当前配置仅保存在内存中。"
+                                        <TextBlock Text="可在左侧列表维护 MongoDB 连接配置；每个连接的“...”菜单提供编辑、复制和删除。当前配置仅保存在内存中。"
                                                    Foreground="#64748B"
                                                    Margin="0,12,0,18"
                                                    TextWrapping="Wrap" />
@@ -284,6 +332,9 @@
                                             <TextBlock Text="{Binding SelectedConnection.Database, TargetNullValue=暂无数据库}"
                                                        Foreground="#64748B"
                                                        Margin="0,6,0,0" />
+                                            <TextBlock Text="{Binding SelectedConnection.SshProxySummary, TargetNullValue=未启用 SSH 代理}"
+                                                       Foreground="#64748B"
+                                                       Margin="0,6,0,0" />
                                         </StackPanel>
                                     </Border>
                                 </Grid>
@@ -296,61 +347,150 @@
             <Border Grid.ColumnSpan="3"
                     Background="#80000000"
                     Visibility="{Binding IsEditorOpen, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Border Width="520"
+                <Border Width="620"
+                        MaxHeight="680"
                         Background="White"
                         CornerRadius="12"
                         Padding="22"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center">
-                    <StackPanel>
-                        <TextBlock Text="{Binding EditorTitle}"
-                                   FontSize="20"
-                                   FontWeight="SemiBold"
-                                   Foreground="#0F172A" />
-                        <TextBlock Text="当前仅维护连接配置 UI，保存后会加入左侧连接列表。"
-                                   Foreground="#64748B"
-                                   Margin="0,8,0,20"
-                                   TextWrapping="Wrap" />
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
 
-                        <TextBlock Text="连接名称" Style="{StaticResource FieldLabel}" />
-                        <TextBox Text="{Binding EditingConnection.Name, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,14"
-                                 MinHeight="32" />
+                        <StackPanel>
+                            <TextBlock Text="{Binding EditorTitle}"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Foreground="#0F172A" />
+                            <TextBlock Text="配置 MongoDB 地址和可选 SSH 代理。当前阶段仅维护 UI 配置，真实连接逻辑后续接入。"
+                                       Foreground="#64748B"
+                                       Margin="0,8,0,20"
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
 
-                        <TextBlock Text="Host" Style="{StaticResource FieldLabel}" />
-                        <TextBox Text="{Binding EditingConnection.Host, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,14"
-                                 MinHeight="32" />
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="连接名称" Style="{StaticResource FieldLabel}" />
+                                <TextBox Text="{Binding EditingConnection.Name, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,14"
+                                         MinHeight="32" />
 
-                        <TextBlock Text="Port" Style="{StaticResource FieldLabel}" />
-                        <TextBox Text="{Binding EditingConnection.Port, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,14"
-                                 MinHeight="32" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="14" />
+                                        <ColumnDefinition Width="130" />
+                                    </Grid.ColumnDefinitions>
 
-                        <TextBlock Text="Database" Style="{StaticResource FieldLabel}" />
-                        <TextBox Text="{Binding EditingConnection.Database, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,14"
-                                 MinHeight="32" />
+                                    <StackPanel>
+                                        <TextBlock Text="MongoDB Host" Style="{StaticResource FieldLabel}" />
+                                        <TextBox Text="{Binding EditingConnection.Host, UpdateSourceTrigger=PropertyChanged}"
+                                                 Margin="0,0,0,14"
+                                                 MinHeight="32" />
+                                    </StackPanel>
 
-                        <TextBlock Text="用户名（可选）" Style="{StaticResource FieldLabel}" />
-                        <TextBox Text="{Binding EditingConnection.UserName, UpdateSourceTrigger=PropertyChanged}"
-                                 Margin="0,0,0,18"
-                                 MinHeight="32" />
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="MongoDB Port" Style="{StaticResource FieldLabel}" />
+                                        <TextBox Text="{Binding EditingConnection.Port, UpdateSourceTrigger=PropertyChanged}"
+                                                 Margin="0,0,0,14"
+                                                 MinHeight="32" />
+                                    </StackPanel>
+                                </Grid>
 
-                        <TextBlock Text="{Binding EditorError}"
-                                   Foreground="#DC2626"
-                                   TextWrapping="Wrap"
-                                   Margin="0,0,0,14" />
+                                <TextBlock Text="默认数据库" Style="{StaticResource FieldLabel}" />
+                                <TextBox Text="{Binding EditingConnection.Database, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,14"
+                                         MinHeight="32" />
 
-                        <WrapPanel HorizontalAlignment="Right">
-                            <Button Content="取消"
-                                    Command="{Binding CancelEditCommand}"
-                                    Style="{StaticResource SecondaryButton}" />
-                            <Button Content="保存"
-                                    Command="{Binding SaveConnectionCommand}"
-                                    Style="{StaticResource PrimaryButton}" />
-                        </WrapPanel>
-                    </StackPanel>
+                                <TextBlock Text="MongoDB 用户名（可选）" Style="{StaticResource FieldLabel}" />
+                                <TextBox Text="{Binding EditingConnection.UserName, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,18"
+                                         MinHeight="32" />
+
+                                <CheckBox Content="启用 SSH 代理"
+                                          IsChecked="{Binding EditingConnection.UseSshProxy, UpdateSourceTrigger=PropertyChanged}"
+                                          FontWeight="SemiBold"
+                                          Foreground="#0F172A"
+                                          Margin="0,0,0,12" />
+
+                                <Border BorderBrush="#E2E8F0"
+                                        BorderThickness="1"
+                                        CornerRadius="10"
+                                        Padding="14"
+                                        Margin="0,0,0,18"
+                                        Visibility="{Binding EditingConnection.UseSshProxy, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <TextBlock Text="SSH 代理配置"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#0F172A"
+                                                   Margin="0,0,0,12" />
+
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="14" />
+                                                <ColumnDefinition Width="130" />
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel>
+                                                <TextBlock Text="SSH Host" Style="{StaticResource FieldLabel}" />
+                                                <TextBox Text="{Binding EditingConnection.SshHost, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="0,0,0,14"
+                                                         MinHeight="32" />
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="SSH Port" Style="{StaticResource FieldLabel}" />
+                                                <TextBox Text="{Binding EditingConnection.SshPort, UpdateSourceTrigger=PropertyChanged}"
+                                                         Margin="0,0,0,14"
+                                                         MinHeight="32" />
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <TextBlock Text="SSH 用户名" Style="{StaticResource FieldLabel}" />
+                                        <TextBox Text="{Binding EditingConnection.SshUserName, UpdateSourceTrigger=PropertyChanged}"
+                                                 Margin="0,0,0,14"
+                                                 MinHeight="32" />
+
+                                        <TextBlock Text="SSH 密码（可选，暂存内存）" Style="{StaticResource FieldLabel}" />
+                                        <TextBox Text="{Binding EditingConnection.SshPassword, UpdateSourceTrigger=PropertyChanged}"
+                                                 Margin="0,0,0,14"
+                                                 MinHeight="32" />
+
+                                        <TextBlock Text="SSH 私钥路径（可选）" Style="{StaticResource FieldLabel}" />
+                                        <TextBox Text="{Binding EditingConnection.SshPrivateKeyPath, UpdateSourceTrigger=PropertyChanged}"
+                                                 Margin="0,0,0,8"
+                                                 MinHeight="32" />
+
+                                        <TextBlock Text="提示：密码、私钥和连接串属于敏感信息，后续持久化时需要加密或写入本机安全存储。"
+                                                   Foreground="#64748B"
+                                                   FontSize="12"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </ScrollViewer>
+
+                        <StackPanel Grid.Row="2">
+                            <TextBlock Text="{Binding EditorError}"
+                                       Foreground="#DC2626"
+                                       TextWrapping="Wrap"
+                                       Margin="0,12,0,14" />
+
+                            <WrapPanel HorizontalAlignment="Right">
+                                <Button Content="取消"
+                                        Command="{Binding CancelEditCommand}"
+                                        Style="{StaticResource SecondaryButton}" />
+                                <Button Content="保存"
+                                        Command="{Binding SaveConnectionCommand}"
+                                        Style="{StaticResource PrimaryButton}" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Grid>
                 </Border>
             </Border>
         </Grid>
